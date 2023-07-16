@@ -4211,6 +4211,17 @@ pub enum ChatId {
     /// username
     StringType(String),
 }
+impl From<i64> for ChatId {
+    fn from(value: i64) -> Self {
+        Self::IntType(value)
+    }
+}
+impl From<String> for ChatId {
+    fn from(value: String) -> Self {
+        Self::StringType(value)
+    }
+}
+
 
 /// This object represents the contents of a file to be uploaded. Must be posted using multipart/form-data in the usual way that files are uploaded via the browser.
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -4249,15 +4260,18 @@ impl InputFile {
             InputFile::FileBytes(file_name, bytes) => Ok(InputFileResult::Part(
                 reqwest::multipart::Part::bytes(bytes.clone()).file_name(file_name.to_string()),
             )),
+            #[cfg(feature = "non-wasm")]
             InputFile::FilePath(path) => Ok(InputFileResult::Part(
                 reqwest::multipart::Part::stream(reqwest::Body::wrap_stream(
                     tokio_util::codec::FramedRead::new(
                         tokio::fs::File::open(path).await?,
                         tokio_util::codec::BytesCodec::new(),
-                    ),
+                    )
                 ))
                 .file_name(path.to_string()),
             )),
+            #[cfg(feature = "wasm")]
+            InputFile::FilePath(_) => panic!("File System is not supported on worker")
         }
     }
 }
